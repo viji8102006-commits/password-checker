@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tumbler — Password Strength Checker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #11151c;
+    --card: #181d26;
+    --line: #2a313d;
+    --text: #e8e6df;
+    --muted: #8b93a1;
+    --weak: #c5453d;
+    --medium: #d6a23c;
+    --strong: #4f9d69;
+    --pin-rest: #353d4a;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .sub {
+    color: var(--muted);
+    font-size: 14.5px;
+    margin: 0 0 28px;
+    line-height: 1.5;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px;
+  }
+
+  .input-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  #pw {
+    width: 100%;
+    background: #0d1117;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 44px 14px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    color: var(--text);
+    letter-spacing: 0.05em;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  #pw:focus { border-color: #4a5566; }
+
+  #toggle {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.05em;
+    padding: 4px 6px;
+  }
+  #toggle:hover { color: var(--text); }
+
+  /* --- Signature element: pin-tumbler lock visualization --- */
+  .tumbler {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    height: 64px;
+    margin: 22px 0 6px;
+    padding: 0 4px;
+  }
+
+  .pin {
+    flex: 1;
+    height: 14px;
+    background: var(--pin-rest);
+    border-radius: 3px;
+    transition: height 0.35s cubic-bezier(.2,.8,.2,1), background 0.35s ease;
+  }
+
+  .pin.lit { background: var(--accent); }
+
+  .status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+
+  .status {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+
+  .status b { color: var(--accent); }
+
+  .score-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .suggestions {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+
+  .suggestions p {
+    margin: 0 0 10px;
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+
+  .suggestions ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .suggestions li {
+    font-size: 14.5px;
+    line-height: 1.45;
+    padding-left: 18px;
+    position: relative;
+    color: var(--text);
+  }
+
+  .suggestions li::before {
+    content: "—";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+  }
+
+  .empty-hint {
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pin { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">Task 02 / Authentication Security</div>
+    <h1>Tumbler</h1>
+    <p class="sub">Type a password below. Each pin in the lock lifts as you satisfy a security check — fully lifted means a fully strong password.</p>
+
+    <div class="card">
+      <div class="input-row">
+        <input id="pw" type="password" placeholder="Enter a password to test..." autocomplete="off" spellcheck="false" />
+        <button id="toggle" type="button">SHOW</button>
+      </div>
+
+      <div class="tumbler" id="tumbler"></div>
+
+      <div class="status-row">
+        <div class="status" id="statusText">Strength: <b id="strengthLabel">—</b></div>
+        <div class="score-num" id="scoreNum">0 / 7</div>
+      </div>
+
+      <div class="suggestions">
+        <p>Suggestions</p>
+        <ul id="suggestionList">
+          <li class="empty-hint" style="padding-left:0;">Start typing to see feedback.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+<script>
+const pwInput = document.getElementById('pw');
+const toggleBtn = document.getElementById('toggle');
+const tumbler = document.getElementById('tumbler');
+const strengthLabel = document.getElementById('strengthLabel');
+const scoreNum = document.getElementById('scoreNum');
+const suggestionList = document.getElementById('suggestionList');
+
+const NUM_PINS = 7;
+const ACCENT = { weak: '#c5453d', medium: '#d6a23c', strong: '#4f9d69' };
+
+// Build the pins once
+for (let i = 0; i < NUM_PINS; i++) {
+  const pin = document.createElement('div');
+  pin.className = 'pin';
+  tumbler.appendChild(pin);
+}
+const pins = [...tumbler.children];
+
+let debounceTimer = null;
+
+toggleBtn.addEventListener('click', () => {
+  const isPw = pwInput.type === 'password';
+  pwInput.type = isPw ? 'text' : 'password';
+  toggleBtn.textContent = isPw ? 'HIDE' : 'SHOW';
+});
+
+pwInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(checkPassword, 150);
+});
+
+async function checkPassword() {
+  const password = pwInput.value;
+
+  if (!password) {
+    resetUI();
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+    render(data);
+  } catch (err) {
+    suggestionList.innerHTML = '<li class="empty-hint" style="padding-left:0;">Could not reach the server. Is the Flask app running?</li>';
+  }
+}
+
+function render(data) {
+  const accent = ACCENT[data.strength] || ACCENT.weak;
+
+  pins.forEach((pin, i) => {
+    const lit = i < data.score;
+    pin.style.height = lit ? `${28 + i * 5}px` : '14px';
+    pin.style.background = lit ? accent : '';
+    pin.classList.toggle('lit', lit);
+  });
+
+  document.documentElement.style.setProperty('--accent', accent);
+  strengthLabel.textContent = data.strength.toUpperCase();
+  scoreNum.textContent = `${data.score} / ${data.max_score}`;
+
+  suggestionList.innerHTML = '';
+  data.suggestions.forEach(s => {
+    const li = document.createElement('li');
+    li.textContent = s;
+    suggestionList.appendChild(li);
+  });
+}
+
+function resetUI() {
+  pins.forEach(pin => {
+    pin.style.height = '14px';
+    pin.style.background = '';
+    pin.classList.remove('lit');
+  });
+  strengthLabel.textContent = '—';
+  scoreNum.textContent = `0 / ${NUM_PINS}`;
+  suggestionList.innerHTML = '<li class="empty-hint" style="padding-left:0;">Start typing to see feedback.</li>';
+}
+</script>
+</body>
+</html>
